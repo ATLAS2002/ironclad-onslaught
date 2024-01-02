@@ -1,0 +1,24 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "NODE_PATH=dist/ node --env-file=.env --env-file=.env.local dist/index",
+    "dev": "tsc-watch --onSuccess \"pnpm start\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "tsc-watch": "^6.0.4",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "@repo/shared": "workspace:*",
+    "@socket.io/redis-adapter": "^8.2.1",
+    "@types/node": "^20.10.5",
+    "ioredis": "^5.3.2",
+    "socket.io": "^4.7.2"
+  }
+}
