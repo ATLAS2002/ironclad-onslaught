@@ -1,7 +1,7 @@
 import { useSocket } from "./socket.hooks";
 import { events } from "@repo/shared/constants";
 import { useLocalStorage } from "./utils.hooks";
-import { ISession, emptyErrorHandler } from "@repo/shared";
+import { ISession, decode, emptyErrorHandler } from "@repo/shared";
 
 const WEB_SERVER_URL = "http://localhost:3000/";
 
@@ -11,7 +11,7 @@ export const useEventEmitters = () => {
   const createRoom = () => {
     if (emptyErrorHandler([socket])) return;
     socket?.emit(events["action:room.create"], (roomId: string): void => {
-      alert(`Your room id is: ${roomId}`);
+      alert(roomId);
       console.log("created room:", roomId);
     });
   };
@@ -43,14 +43,11 @@ export const useEventEmitters = () => {
       { refresh: true }
     );
     setSession(session);
-    socket?.emit(
-      events["action:session.update"],
-      session,
-      (session: ISession) => {
-        console.log("Player is", session.name);
-        console.log("Player id is", session.id);
-      }
-    );
+    socket?.emit(events["action:session.update"], session, (token: string) => {
+      const player = decode(token);
+      console.log("Player is", player.name);
+      console.log("Player id is", player.id);
+    });
   };
 
   const getBothPlayers = (roomId: string | null) => {

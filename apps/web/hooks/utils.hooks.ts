@@ -31,6 +31,7 @@ const generateDefaultSession = (): ISession => {
 export const useClientSession = (
   getSession = generateDefaultSession
 ): ISession => {
-  const session = useLocalStorage<ISession>("session", getSession);
+  // const session = useLocalStorage<ISession>("session", getSession);
+  const session = generateDefaultSession();
   return session;
 };

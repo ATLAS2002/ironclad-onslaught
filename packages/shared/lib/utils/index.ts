@@ -1,5 +1,7 @@
 import { randomBytes } from "crypto";
 
+export * from "./jwt";
+
 /**
  * @description checks for null or undefined values in the arguments array
  * @param args - array of values to be checked

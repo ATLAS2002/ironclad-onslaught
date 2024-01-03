@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@repo/ui";
@@ -11,9 +12,11 @@ export default function HomePage(): JSX.Element {
   const { createRoom, joinRoom, changeName } = useEventEmitters();
   const { socket, session } = useSocket();
   const router = useRouter();
-  socket?.on(events["action:redirect"], (roomId: string) => {
+  socket?.on(events["event:game.start"], (roomId: string) => {
     router.push(`/${roomId}`);
   });
+
+  useEffect(() => {}, []);
   return (
     <main className="flex h-screen w-full flex-col items-center justify-start">
       <h1 className="my-40 font-mono text-5xl font-black text-slate-300">

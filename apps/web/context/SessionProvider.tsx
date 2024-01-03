@@ -41,7 +41,7 @@ const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
       }
     );
 
-    _socket.on(events["alert:player.new"], ({ player }: { player: string }) => {
+    _socket.on(events["event:player.new"], ({ player }: { player: string }) => {
       console.log(`${player} has joined the room`);
     });
 

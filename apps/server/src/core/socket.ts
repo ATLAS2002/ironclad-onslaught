@@ -1,21 +1,26 @@
 import { Server as HTTPServer } from "http";
 import { type Namespace, Server } from "socket.io";
-import { namespaces, ISession, CB, FN, Empty } from "@repo/shared";
+import { namespaces, CB, FN, Empty } from "@repo/shared";
 
 import corsOptions from "configs/cors.config";
 import { socketRedisAdapter } from "configs/redis.config";
 
-interface SocketAndSession {
+interface SocketAndToken {
   socketId: string;
-  session: ISession;
+  token: string;
+}
+
+interface RoomAndToken {
+  roomId: string;
+  token: string;
 }
 
 interface SocketMethods {
-  getPlayerSession: FN<Empty<ISession>, string>;
-  getBothPlayers: FN<Set<string> | undefined, string>;
-  bindSocketWithSession: FN<void, SocketAndSession>;
-  leaveRoom: FN<void, string>;
+  getPlayerToken: FN<Empty<string>, { socketId: string }>;
   getCurrentRoom: FN<Empty<string>, string>;
+  leaveRoom: FN<void, string>;
+  bindSocketWithToken: FN<void, SocketAndToken>;
+  joinRoom: FN<void, RoomAndToken>;
 }
 
 export interface ListenerProps {
@@ -25,48 +30,42 @@ export interface ListenerProps {
 
 export class Socket {
   private readonly _io: Server;
-  private socket_session: Map<string, ISession>;
-  private session_socket: Map<ISession, string>;
-  private session_room: Map<string, Empty<string>>;
-  private room_session: Map<string, Set<string>>;
+  private socket_token: Map<string, string>;
+  private token_socket: Map<string, string>;
+  private token_room: Map<string, Empty<string>>;
+  private room_token: Map<string, Set<string>>;
 
   constructor(httpServer?: HTTPServer) {
-    this.socket_session = new Map<string, ISession>();
-    this.session_socket = new Map<ISession, string>();
-    this.session_room = new Map<string, Empty<string>>();
-    this.room_session = new Map<string, Set<string>>();
+    this.socket_token = new Map<string, string>();
+    this.token_socket = new Map<string, string>();
+    this.token_room = new Map<string, Empty<string>>();
+    this.room_token = new Map<string, Set<string>>();
     this._io = new Server(httpServer, {
       cors: corsOptions,
       adapter: socketRedisAdapter,
     });
   }
 
-  private getPlayerSession(socketId: string): Empty<ISession> {
-    return this.socket_session.get(socketId);
+  private getPlayerToken(socketId: string): Empty<string> {
+    return this.socket_token.get(socketId);
   }
-  private getBothPlayers(roomId: string): Set<string> | undefined {
-    return this._io.of(namespaces.connect).adapter.rooms.get(roomId);
+  private bindSocketWithToken(socketId: string, token: string) {
+    console.log("Refresh triggered");
+    this.socket_token.set(socketId, token);
+    this.token_socket.set(token, socketId);
   }
-  private bindSocketWithSession(socketId: string, session: ISession): void {
-    console.log("Binding socket to session", socketId, session);
-    this.socket_session.set(socketId, session);
-    this.session_socket.set(session, socketId);
-  }
-  private getCurrentRoom(sessionId: string): Empty<string> {
-    return this.session_room.get(sessionId);
+  private getCurrentRoom(token: string): Empty<string> {
+    console.log(token, this.token_room.get(token));
+    return this.token_room.get(token);
   }
   private leaveRoom(roomId: string) {
-    this.session_room.set(roomId, null);
-    this.room_session.get(roomId)?.clear();
+    this.token_room.set(roomId, null);
+    this.room_token.get(roomId)?.clear();
   }
-  private joinPlayersToRoom({
-    roomId,
-    session,
-  }: {
-    roomId: string;
-    session: ISession;
-  }): void {
-    this.session_room.set(session.id, roomId);
+  private joinRoom({ roomId, token }: RoomAndToken) {
+    if (this.room_token.get(roomId)?.size ?? 0 >= 2) return;
+    this.room_token.get(roomId)?.add(token);
+    this.token_room.set(token, roomId);
   }
 
   public attatchListeners(
@@ -76,17 +75,18 @@ export class Socket {
     listener({
       io: this._io.of(namespace),
       methods: {
-        getPlayerSession: (socketId: string) => this.getPlayerSession(socketId),
-        getBothPlayers: (roomId: string) => this.getBothPlayers(roomId),
+        getPlayerToken: ({ socketId }: { socketId: string }) =>
+          this.getPlayerToken(socketId),
+
         leaveRoom: (roomId: string) => this.leaveRoom(roomId),
-        bindSocketWithSession: ({ socketId, session }: SocketAndSession) =>
-          this.bindSocketWithSession(socketId, session),
-        /**
-         * @description Takes session ID and returns corresponding room ID
-         * @param sessionId - id of current session
-         * @returns id of current room
-         */
-        getCurrentRoom: (sessionId: string) => this.getCurrentRoom(sessionId),
+
+        bindSocketWithToken: ({ socketId, token }: SocketAndToken) =>
+          this.bindSocketWithToken(socketId, token),
+
+        getCurrentRoom: (token: string) => this.getCurrentRoom(token),
+
+        joinRoom: ({ roomId, token }: RoomAndToken) =>
+          this.joinRoom({ roomId, token }),
       } satisfies SocketMethods,
     });
   }
